@@ -4,7 +4,9 @@ import {
   VectorStoreIndex,
   storageContextFromDefaults,
 } from "llamaindex";
-import { beforeAll, describe, expect, test, vi } from "vitest";
+import { DocStoreStrategy } from "llamaindex/ingestion/strategies/index";
+import { rmSync } from "node:fs";
+import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { mockServiceContext } from "../utility/mockServiceContext.js";
 
 vi.mock("llamaindex/llm/open_ai", () => {
@@ -17,7 +19,7 @@ describe.sequential("VectorStoreIndex", () => {
   let serviceContext: ServiceContext;
   let storageContext: StorageContext;
   let testStrategy: (
-    // strategy?: DocStoreStrategy,
+    strategy: DocStoreStrategy,
     runs?: number,
   ) => Promise<Array<number>>;
 
@@ -27,7 +29,7 @@ describe.sequential("VectorStoreIndex", () => {
       persistDir: "/tmp/test_dir",
     });
     testStrategy = async (
-      // strategy?: DocStoreStrategy,
+      strategy: DocStoreStrategy,
       runs: number = 2,
     ): Promise<Array<number>> => {
       const documents = [new Document({ text: "lorem ipsem", id_: "1" })];
@@ -36,7 +38,7 @@ describe.sequential("VectorStoreIndex", () => {
         await VectorStoreIndex.fromDocuments(documents, {
           serviceContext,
           storageContext,
-          // docStoreStrategy: strategy,
+          docStoreStrategy: strategy,
         });
         const docs = await storageContext.docStore.docs();
         entries.push(Object.keys(docs).length);
@@ -45,17 +47,17 @@ describe.sequential("VectorStoreIndex", () => {
     };
   });
 
-  test("fromDocuments does not stores duplicates per default", async () => {
-    const entries = await testStrategy();
+  test("fromDocuments stores duplicates without a doc store strategy", async () => {
+    const entries = await testStrategy(DocStoreStrategy.NONE);
+    expect(entries[0] + 1).toBe(entries[1]);
+  });
+
+  test("fromDocuments ignores duplicates with upserts doc store strategy", async () => {
+    const entries = await testStrategy(DocStoreStrategy.UPSERTS);
     expect(entries[0]).toBe(entries[1]);
   });
 
-  // test("fromDocuments ignores duplicates in upserts", async () => {
-  //   const entries = await testStrategy(DocStoreStrategy.DUPLICATES_ONLY);
-  //   expect(entries[0]).toBe(entries[1]);
-  // });
-
-  // afterAll(() => {
-  //   rmSync("/tmp/test_dir", { recursive: true });
-  // });
+  afterAll(() => {
+    rmSync("/tmp/test_dir", { recursive: true });
+  });
 });

@@ -1,12 +1,13 @@
 import type { BaseNode } from "../../Node.js";
 import type { BaseDocumentStore, VectorStore } from "../../storage/index.js";
+import type { TransformComponent } from "../types.js";
 import { classify } from "./classify.js";
 
 /**
  * Handle docstore upserts by checking hashes and ids.
  * Identify missing docs and delete them from docstore and vector store
  */
-export class UpsertsAndDeleteStrategy {
+export class UpsertsAndDeleteStrategy implements TransformComponent {
   protected docStore: BaseDocumentStore;
   protected vectorStore?: VectorStore;
 
